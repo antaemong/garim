@@ -83,11 +83,13 @@
       return this._tokenRe;
     }
 
-    unmask(text) {
+    // transform: 되돌린 값을 넣기 전에 가공할 때 쓴다 (HTML에 넣을 때 이스케이프 등).
+    unmask(text, transform) {
       if (!this.entries.length || !text) return text;
       return text.replace(this._tokenRegex(), (whole, l1, n1, l2, n2) => {
         const entry = this.byToken.get(`[${l1 || l2}${n1 || n2}]`);
-        return entry ? entry.original : whole;
+        if (!entry) return whole;
+        return transform ? transform(entry.original) : entry.original;
       });
     }
 

@@ -36,6 +36,22 @@
       ],
       "js": ["src/patterns.js", "src/masker.js", "src/storage.js", "src/content.js"],
       "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://chat.openai.com/*",
+        "https://claude.ai/*",
+        "https://gemini.google.com/*",
+        "https://www.perplexity.ai/*",
+        "https://copilot.microsoft.com/*",
+        "https://chat.deepseek.com/*",
+        "https://grok.com/*",
+        "https://wrtn.ai/*"
+      ],
+      "js": ["src/clipboard-main.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
     }
   ]
 }

@@ -24,6 +24,7 @@
     enabled = !settings.disabledSites.includes(location.hostname);
 
     window.addEventListener('paste', onPaste, true);
+    window.addEventListener('garim:copied', onCopied);
     store.onChange(onStorageChange);
     startRestoring();
   }
@@ -83,6 +84,33 @@
     }
   }
 
+  // ---------- 복사 버튼 ----------
+  // 답변의 복사 버튼은 화면이 아니라 사이트 내부 데이터(기호가 든 글)를 복사한다.
+  // clipboard-main.js가 알려주면 기호를 원래 값으로 바꿔 클립보드에 다시 쓴다.
+
+  const escapeHtml = (s) =>
+    s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+
+  function onCopied(e) {
+    if (!enabled || !masker.size) return;
+    let data;
+    try {
+      data = JSON.parse(e.detail);
+    } catch {
+      return;
+    }
+    const text = data.text && masker.unmask(data.text);
+    const html = data.html && masker.unmask(data.html, escapeHtml);
+    if (text === data.text && html === data.html) return;
+
+    const parts = {};
+    if (text) parts['text/plain'] = new Blob([text], { type: 'text/plain' });
+    if (html) parts['text/html'] = new Blob([html], { type: 'text/html' });
+    navigator.clipboard
+      .write([new ClipboardItem(parts)])
+      .catch((err) => console.warn('[가림] 복사한 글 되돌리기 실패', err));
+  }
+
   // ---------- 되돌리기 ----------
 
   function restoreText(node) {
@@ -120,7 +148,8 @@
       }
       if (!scheduled) {
         scheduled = true;
-        requestAnimationFrame(flush);
+        // requestAnimationFrame은 백그라운드 탭에서 멈추므로 타이머를 쓴다.
+        setTimeout(flush, 30);
       }
     }).observe(document.body, { childList: true, subtree: true, characterData: true });
 

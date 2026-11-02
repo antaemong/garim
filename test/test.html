@@ -20,6 +20,17 @@
   <div id="editor" contenteditable="true"></div>
   <div id="response"></div>
 
+  <script>
+    // 실제 클립보드 대신 쓰는 가짜 클립보드 (테스트 페이지는 클립보드 권한이 없을 수 있다)
+    const fakeClipboard = { text: null, items: null };
+    Object.defineProperty(navigator, 'clipboard', {
+      value: {
+        async writeText(text) { fakeClipboard.text = text; fakeClipboard.items = null; },
+        async write(items) { fakeClipboard.items = items; fakeClipboard.text = null; },
+      },
+    });
+  </script>
+  <script src="../src/clipboard-main.js"></script>
   <script src="../src/patterns.js"></script>
   <script src="../src/masker.js"></script>
   <script src="../src/storage.js"></script>
@@ -80,6 +91,26 @@
       await new Promise((r) => setTimeout(r, 100));
       check('답변 화면 되돌리기', response.textContent, 'AI 답변: 010-2222-3333번으로 전화하세요');
       check('입력창은 되돌리지 않음', field.value, '번호는 [전화1]');
+
+      // 복사 버튼: 사이트가 기호가 든 글을 복사하면 원래 값으로 바뀌어야 한다.
+      const settle = () => new Promise((r) => setTimeout(r, 50));
+      await navigator.clipboard.writeText('연락처: [전화1]');
+      await settle();
+      const restored = fakeClipboard.items && (await fakeClipboard.items[0].getType('text/plain').then((b) => b.text()));
+      check('복사 버튼(writeText) 되돌리기', restored, '연락처: 010-2222-3333');
+
+      await navigator.clipboard.write([new ClipboardItem({
+        'text/plain': new Blob(['메일 [이메일1]'], { type: 'text/plain' }),
+        'text/html': new Blob(['<p>메일 <b>[이메일1]</b></p>'], { type: 'text/html' }),
+      })]);
+      await settle();
+      const item = fakeClipboard.items[0];
+      check('복사 버튼(write) 글자', await item.getType('text/plain').then((b) => b.text()), '메일 test@garim.kr');
+      check('복사 버튼(write) HTML', await item.getType('text/html').then((b) => b.text()), '<p>메일 <b>test@garim.kr</b></p>');
+
+      await navigator.clipboard.writeText('기호 없는 글');
+      await settle();
+      check('기호 없으면 그대로', fakeClipboard.text, '기호 없는 글');
 
       render();
     }, 200);
