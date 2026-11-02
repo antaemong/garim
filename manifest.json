@@ -1,0 +1,41 @@
+{
+  "manifest_version": 3,
+  "name": "가림 - AI 개인정보 가리개",
+  "short_name": "가림",
+  "version": "0.1.0",
+  "description": "AI 채팅에 붙여넣는 글에서 전화번호·주민번호·계좌번호 등을 브라우저 안에서 가리고, 답변에서는 원래 값으로 되돌려 보여줍니다.",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": ["storage", "scripting", "activeTab"],
+  "optional_host_permissions": ["https://*/*", "http://*/*"],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://chat.openai.com/*",
+        "https://claude.ai/*",
+        "https://gemini.google.com/*",
+        "https://www.perplexity.ai/*",
+        "https://copilot.microsoft.com/*",
+        "https://chat.deepseek.com/*",
+        "https://grok.com/*",
+        "https://wrtn.ai/*"
+      ],
+      "js": ["src/patterns.js", "src/masker.js", "src/storage.js", "src/content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

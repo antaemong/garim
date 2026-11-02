@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>가림 테스트</title>
+  <style>
+    body { font: 14px/1.5 system-ui, "Malgun Gothic", sans-serif; margin: 24px; background: #fff; color: #111; }
+    .pass { color: #1d7a63; } .fail { color: #c0392b; font-weight: 600; }
+    textarea, [contenteditable] { display: block; width: 480px; min-height: 40px; border: 1px solid #aaa; margin: 6px 0; padding: 6px; }
+  </style>
+</head>
+<body>
+  <h1>가림 테스트</h1>
+  <p id="summary"></p>
+  <ol id="results"></ol>
+
+  <h2>수동 확인용</h2>
+  <p>아래 칸에 개인정보가 들어간 글을 붙여넣어 보세요.</p>
+  <textarea id="field"></textarea>
+  <div id="editor" contenteditable="true"></div>
+  <div id="response"></div>
+
+  <script src="../src/patterns.js"></script>
+  <script src="../src/masker.js"></script>
+  <script src="../src/storage.js"></script>
+  <script src="../src/content.js"></script>
+  <script>
+    const results = [];
+    const check = (name, actual, expected) => results.push({ name, ok: actual === expected, actual, expected });
+    const masked = (input, words) => new GarimMasker().mask(input, words).text;
+
+    // ---- 탐지 ----
+    check('휴대폰', masked('연락처 010-1234-5678 입니다'), '연락처 [전화1] 입니다');
+    check('휴대폰 형식이 달라도 같은 기호', masked('010-1234-5678, 01012345678'), '[전화1], [전화1]');
+    check('일반 전화', masked('사무실 02-123-4567'), '사무실 [전화1]');
+    check('주민번호', masked('900101-1234567'), '[주민번호1]');
+    check('주민번호 뒷자리 일부 가림', masked('900101-1******'), '[주민번호1]');
+    check('날짜가 아닌 주민번호 형식은 무시', masked('901301-1234567'), '901301-1234567');
+    check('이메일', masked('메일 Kim.CS@example.co.kr'), '메일 [이메일1]');
+    check('카드번호 (유효)', masked('4111-1111-1111-1111'), '[카드번호1]');
+    check('카드번호 (체크섬 불일치) 무시', masked('1234-5678-9012-3456'), '1234-5678-9012-3456');
+    check('사업자번호', masked('123-45-67891'), '[사업자번호1]');
+    check('계좌번호', masked('신한 110-123-456789'), '신한 [계좌1]');
+    check('운전면허', masked('11-22-123456-78'), '[면허번호1]');
+    check('여권번호', masked('여권 M12345678'), '여권 [여권번호1]');
+    check('날짜는 무시', masked('2024-01-15 회의'), '2024-01-15 회의');
+    check('지정 단어', masked('김철수 고객 010-9999-8888', ['김철수']), '[비공개1] 고객 [전화1]');
+    check('여러 종류', masked('김철수(010-1234-5678, 900101-1234567)의 계약 건', ['김철수']),
+      '[비공개1]([전화1], [주민번호1])의 계약 건');
+
+    // ---- 되돌리기 ----
+    const m = new GarimMasker();
+    m.mask('010-1234-5678 / a@b.com', []);
+    check('되돌리기', m.unmask('[전화1]로 연락하고 [이메일1]로 보내세요'), '010-1234-5678로 연락하고 a@b.com로 보내세요');
+    check('변형된 기호', m.unmask('[전화 1], 【이메일1】, 전화1'), '010-1234-5678, a@b.com, 010-1234-5678');
+    check('모르는 기호는 그대로', m.unmask('[전화9]'), '[전화9]');
+    check('대응표 저장 후 복원', new GarimMasker(JSON.parse(JSON.stringify(m.toJSON()))).unmask('[전화1]'), '010-1234-5678');
+    const m2 = new GarimMasker(m.toJSON());
+    check('저장 후에도 번호 이어서 매김', m2.mask('010-5555-6666').text, '[전화2]');
+
+    // ---- 붙여넣기 + 화면 되돌리기 (content.js) ----
+    function paste(el, text) {
+      el.focus();
+      const data = new DataTransfer();
+      data.setData('text/plain', text);
+      el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }));
+    }
+
+    setTimeout(async () => {
+      const field = document.getElementById('field');
+      paste(field, '번호는 010-2222-3333');
+      check('textarea 붙여넣기', field.value, '번호는 [전화1]');
+
+      const editor = document.getElementById('editor');
+      paste(editor, '메일 test@garim.kr');
+      check('contenteditable 붙여넣기', editor.textContent, '메일 [이메일1]');
+
+      const response = document.getElementById('response');
+      response.textContent = 'AI 답변: [전화1]번으로 전화하세요';
+      await new Promise((r) => setTimeout(r, 100));
+      check('답변 화면 되돌리기', response.textContent, 'AI 답변: 010-2222-3333번으로 전화하세요');
+      check('입력창은 되돌리지 않음', field.value, '번호는 [전화1]');
+
+      render();
+    }, 200);
+
+    function render() {
+      const failed = results.filter((r) => !r.ok).length;
+      document.getElementById('summary').textContent = `${results.length}개 중 ${results.length - failed}개 통과`;
+      document.title = failed ? `FAIL ${failed}` : 'PASS';
+      document.getElementById('results').replaceChildren(...results.map((r) => {
+        const li = document.createElement('li');
+        li.className = r.ok ? 'pass' : 'fail';
+        li.textContent = r.ok ? `✓ ${r.name}` : `✗ ${r.name} — 결과: ${r.actual} / 기대: ${r.expected}`;
+        return li;
+      }));
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <img src="../icons/icon48.png" alt="" width="24" height="24">
+    <h1>가림</h1>
+  </header>
+
+  <section id="site">
+    <div class="host" id="host"></div>
+    <p class="hint" id="site-hint"></p>
+    <label class="toggle" id="toggle-row" hidden>
+      <input type="checkbox" id="toggle"> 이 사이트에서 사용
+    </label>
+    <button id="add-site" hidden>이 사이트에서도 사용하기</button>
+    <button id="remove-site" class="ghost" hidden>추가한 사이트에서 제거</button>
+  </section>
+
+  <section>
+    <h2>지금 가려진 항목 <span id="count" class="badge">0</span></h2>
+    <p class="hint">브라우저를 닫으면 자동으로 지워집니다.</p>
+    <ul id="entries"></ul>
+    <button id="clear" class="ghost">기록 지우기</button>
+  </section>
+
+  <section>
+    <h2>항상 가릴 단어</h2>
+    <p class="hint">이름, 회사명 등을 한 줄에 하나씩 입력하세요. 이 기기에만 저장됩니다.</p>
+    <textarea id="words" rows="4" placeholder="김철수&#10;주식회사 가나다"></textarea>
+    <button id="save-words">저장</button>
+    <span id="saved" class="hint" hidden>저장했습니다</span>
+  </section>
+
+  <script src="../src/storage.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
